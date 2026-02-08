@@ -6,17 +6,23 @@ local stub = require("alertty.stub")
 local cmdline = require("alertty.cmdline")
 
 function M.setup(opts)
-  config.setup(opts)
-  stub.inject()
-  cmdline.setup()
+	config.setup(opts)
+	stub.inject()
+	cmdline.setup()
+
+	vim.api.nvim_create_user_command("Alertty", function()
+		cmdline.show_messages()
+	end, { desc = "Show alertty message history" })
+
+	vim.cmd("cabbrev messages Alertty")
 end
 
 function M.notify(msg, hl_group)
-  ui.show_float(msg, hl_group)
+	ui.show_float(msg, hl_group)
 end
 
 function M.dismiss()
-  ui.dismiss()
+	ui.dismiss()
 end
 
 return M
