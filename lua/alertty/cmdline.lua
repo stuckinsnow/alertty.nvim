@@ -27,11 +27,19 @@ local function update_cmdline()
 		""
 	)
 
+	-- Insert cursor at position
+	local cursor_pos = active_cmdline.pos
+	local before = content:sub(1, cursor_pos)
+	local at_cursor = content:sub(cursor_pos + 1, cursor_pos + 1)
+	local after = content:sub(cursor_pos + 2)
+
 	local chunks = {}
 	if icon ~= "" then
 		table.insert(chunks, { icon .. " ", "AlerttyCmdlineIcon" })
 	end
-	table.insert(chunks, { content, "AlerttyCmdlineText" })
+	table.insert(chunks, { before, "AlerttyCmdlineText" })
+	table.insert(chunks, { "█", "AlerttyCmdlineCursor" })
+	table.insert(chunks, { at_cursor .. after, "AlerttyCmdlineText" })
 
 	vim.api.nvim_echo(chunks, false, {})
 end
@@ -117,8 +125,32 @@ function M.setup()
 	vim.api.nvim_set_hl(0, "AlerttyCmdlineIcon", { fg = "#ff8800", default = true })
 	vim.api.nvim_set_hl(0, "AlerttyCmdlineText", { fg = "#a0a0a0", default = true })
 	vim.api.nvim_set_hl(0, "AlerttyError", { link = "ErrorMsg", default = true })
+	vim.api.nvim_set_hl(0, "AlerttyCmdlineCursor", { fg = "#000000", bg = "#ffffff", default = true })
+	vim.api.nvim_set_hl(0, "AlerttyHiddenCursor", { blend = 100, nocombine = true })
 
 	vim.o.cmdheight = 0
+
+	local saved_guicursor = vim.go.guicursor
+	vim.api.nvim_create_autocmd("CmdlineEnter", {
+		callback = function()
+			saved_guicursor = vim.go.guicursor
+			vim.schedule(function()
+				local bg = vim.api.nvim_get_hl(0, { name = "Normal" }).bg
+				vim.api.nvim_set_hl(0, "AlerttyHiddenCursor", { fg = bg, bg = bg, nocombine = true })
+				vim.go.guicursor = "a:AlerttyHiddenCursor"
+			end)
+		end,
+	})
+	vim.api.nvim_create_autocmd("CmdlineLeave", {
+		callback = function()
+			vim.schedule(function()
+				vim.go.guicursor = "a:"
+				vim.cmd.redrawstatus()
+				vim.go.guicursor = saved_guicursor
+			end)
+		end,
+	})
+
 	ns = vim.api.nvim_create_namespace("alertty_cmdline")
 
 	vim.ui_attach(ns, { ext_cmdline = true }, function(event, ...)
@@ -145,7 +177,12 @@ function M.setup()
 	local orig_echo = vim.api.nvim_echo
 	vim.api.nvim_echo = function(chunks, history, opts)
 		if history and chunks and #chunks > 0 then
-			local text = table.concat(vim.tbl_map(function(c) return c[1] or "" end, chunks), "")
+			local text = table.concat(
+				vim.tbl_map(function(c)
+					return c[1] or ""
+				end, chunks),
+				""
+			)
 			if text ~= "" then
 				M.show_msg(text:gsub("\n", " "))
 				return
