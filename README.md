@@ -15,8 +15,7 @@ A lightweight Neovim plugin that intercepts `noice.nvim` calls and displays noti
 
 ```lua
 {
-  dir = "/path/to/alertty",
-  name = "alertty",
+  "stuckinsnow/alertty.nvim",
   priority = 10000,
   config = function()
     require("alertty").setup({
