@@ -4,11 +4,13 @@ local config = require("alertty.config")
 local ui = require("alertty.ui")
 local stub = require("alertty.stub")
 local cmdline = require("alertty.cmdline")
+local lsp = require("alertty.lsp")
 
 function M.setup(opts)
 	config.setup(opts)
 	stub.inject()
 	cmdline.setup()
+	lsp.setup()
 
 	vim.api.nvim_create_user_command("Alertty", function()
 		cmdline.show_messages()
