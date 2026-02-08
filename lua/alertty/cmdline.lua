@@ -1,5 +1,7 @@
 local M = {}
 
+---@diagnostic disable: duplicate-set-field
+
 local ns
 local messages = {}
 local msg_win
@@ -153,42 +155,53 @@ function M.setup()
 
 	ns = vim.api.nvim_create_namespace("alertty_cmdline")
 
-	vim.ui_attach(ns, { ext_cmdline = true }, function(event, ...)
+	---@type function
+	local ui_callback = function(event, ...)
 		if event == "cmdline_show" then
 			on_show(...)
 		elseif event == "cmdline_hide" then
-			on_hide(...)
+			on_hide()
 		elseif event == "cmdline_pos" then
 			on_pos(...)
 		end
 		return true
-	end)
+	end
 
-	local orig_notify = vim.notify
-	local in_notify = false
-	vim.notify = function(msg, level, opts)
-		if not in_notify and msg and msg ~= "" then
-			in_notify = true
-			M.show_msg(tostring(msg):gsub("\n", " "))
-			in_notify = false
+	vim.ui_attach(ns, { ext_cmdline = true }, ui_callback)
+
+	if not M._orig_notify then
+		M._orig_notify = vim.notify
+		local in_notify = false
+		---@param msg any
+		vim.notify = function(msg, _, _)
+			if not in_notify and msg and msg ~= "" then
+				in_notify = true
+				M.show_msg(tostring(msg):gsub("\n", " "))
+				in_notify = false
+			end
 		end
 	end
 
-	local orig_echo = vim.api.nvim_echo
-	vim.api.nvim_echo = function(chunks, history, opts)
-		if history and chunks and #chunks > 0 then
-			local text = table.concat(
-				vim.tbl_map(function(c)
-					return c[1] or ""
-				end, chunks),
-				""
-			)
-			if text ~= "" then
-				M.show_msg(text:gsub("\n", " "))
-				return
+	if not M._orig_echo then
+		M._orig_echo = vim.api.nvim_echo
+		---@param chunks any[]
+		---@param history boolean
+		---@param opts table
+		vim.api.nvim_echo = function(chunks, history, opts)
+			if history and chunks and #chunks > 0 then
+				local text = table.concat(
+					vim.tbl_map(function(c)
+						return c[1] or ""
+					end, chunks),
+					""
+				)
+				if text ~= "" then
+					M.show_msg(text:gsub("\n", " "))
+					return
+				end
 			end
+			M._orig_echo(chunks, history, opts)
 		end
-		orig_echo(chunks, history, opts)
 	end
 
 	local config = require("alertty.config")
@@ -219,14 +232,6 @@ function M.setup()
 				end
 			end,
 		})
-	end
-
-	local orig_err = vim.api.nvim_err_writeln
-	vim.api.nvim_err_writeln = function(msg)
-		if msg and msg ~= "" then
-			local text = tostring(msg):gsub("\n", " ")
-			M.show_msg(text)
-		end
 	end
 end
 
