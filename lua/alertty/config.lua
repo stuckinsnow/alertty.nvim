@@ -5,6 +5,7 @@ M.options = {
   width = 60,
   border = "none",
   position = "bottom_right",
+  diagnostics_on_save_only = true,
 }
 
 function M.setup(opts)

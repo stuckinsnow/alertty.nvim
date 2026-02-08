@@ -37,6 +37,7 @@ Default options:
   width = 60,
   border = "none",
   position = "bottom_right",
+  diagnostics_on_save_only = true, -- false to show diagnostics whenever out of insert mode
 }
 ```
 

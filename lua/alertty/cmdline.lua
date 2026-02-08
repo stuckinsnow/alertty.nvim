@@ -191,15 +191,35 @@ function M.setup()
 		orig_echo(chunks, history, opts)
 	end
 
-	vim.api.nvim_create_autocmd("DiagnosticChanged", {
-		callback = function()
-			local diag = vim.diagnostic.get(0, { severity = { min = vim.diagnostic.severity.WARN } })
-			if #diag > 0 then
-				local d = diag[#diag]
-				M.show_msg(d.message:gsub("\n", " "))
-			end
-		end,
-	})
+	local config = require("alertty.config")
+
+	if config.options.diagnostics_on_save_only then
+		vim.api.nvim_create_autocmd("BufWritePost", {
+			callback = function()
+				vim.defer_fn(function()
+					local diag = vim.diagnostic.get(0, { severity = { min = vim.diagnostic.severity.ERROR } })
+					if #diag > 0 then
+						local d = diag[#diag]
+						M.show_msg(d.message:gsub("\n", " "))
+					end
+				end, 500)
+			end,
+		})
+	else
+		vim.api.nvim_create_autocmd("DiagnosticChanged", {
+			callback = function()
+				local mode = vim.api.nvim_get_mode().mode
+				if mode == "i" or mode == "ic" or mode == "ix" then
+					return
+				end
+				local diag = vim.diagnostic.get(0, { severity = { min = vim.diagnostic.severity.ERROR } })
+				if #diag > 0 then
+					local d = diag[#diag]
+					M.show_msg(d.message:gsub("\n", " "))
+				end
+			end,
+		})
+	end
 
 	local orig_err = vim.api.nvim_err_writeln
 	vim.api.nvim_err_writeln = function(msg)
